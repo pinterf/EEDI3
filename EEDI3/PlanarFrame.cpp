@@ -25,17 +25,6 @@
 #include <stdint.h>
 #include <emmintrin.h>
 
-/*
-extern "C" void convYUY2to422_MMX(const uint8_t *src, uint8_t *py, uint8_t *pu, uint8_t *pv, int pitch1, int pitch2Y, int pitch2UV,
-  int width, int height);
-extern "C" void convYUY2to422_SSE2(const uint8_t *src, uint8_t *py, uint8_t *pu, uint8_t *pv, int pitch1, int pitch2Y, int pitch2UV,
-  int width, int height);
-extern "C" void conv422toYUY2_MMX(uint8_t *py, uint8_t *pu, uint8_t *pv, uint8_t *dst, int pitch1Y, int pitch1UV, int pitch2,
-  int width, int height);
-extern "C" void conv422toYUY2_SSE2(uint8_t *py, uint8_t *pu, uint8_t *pv, uint8_t *dst, int pitch1Y, int pitch1UV, int pitch2,
-  int width, int height);
-*/
-
 int modnpf(const int m, const int n)
 {
   if ((m%n) == 0)

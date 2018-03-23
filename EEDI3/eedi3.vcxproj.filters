@@ -50,14 +50,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="PlanarFrame_asm.asm">
-      <Filter>Source Files</Filter>
-    </MASM>
-    <MASM Include="PlanarFrame_asm_x64.asm">
-      <Filter>Source Files</Filter>
-    </MASM>
-  </ItemGroup>
-  <ItemGroup>
     <Filter Include="Header Files">
       <UniqueIdentifier>{41b43ad7-df64-4f10-b6b7-7c212e8f370b}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
