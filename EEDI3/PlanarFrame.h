@@ -27,7 +27,7 @@
 #include <windows.h>
 #include <malloc.h>
 #include <stdint.h>
-#include "internal.h"
+#include "avisynth.h"
 
 #define MIN_PAD 10
 #define MIN_ALIGNMENT 16

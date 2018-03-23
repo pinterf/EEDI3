@@ -182,7 +182,6 @@
     <ClInclude Include="avs\win.h" />
     <ClInclude Include="eedi3.h" />
     <ClInclude Include="Eedi3Sse.h" />
-    <ClInclude Include="internal.h" />
     <ClInclude Include="PlanarFrame.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>

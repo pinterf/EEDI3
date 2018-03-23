@@ -45,9 +45,6 @@
     <ClInclude Include="avs\win.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="internal.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="PlanarFrame.h">
       <Filter>Header Files</Filter>
     </ClInclude>
