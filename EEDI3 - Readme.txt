@@ -1,9 +1,10 @@
                                                                                                     |
                                    nnedi3 for Avisynth v2.6.x                                       |
-                                    v0.9.2.1 (July 29, 2015)                                        |
+                                    v0.9.2.2 (March 23, 2018)                                       |
                                           by tritical                                               |
                                      modified by Firesledge                                         |
                                        modified by Elegant                                          |
+                                       modified by pinterf                                          |
                                                                                                     |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
@@ -23,10 +24,10 @@ INFO:
    by the interpolated values (favor small differences), the interpolation directions (favor short connections vs long), and
    the change in interpolation direction from pixel to pixel (favor small changes).
 
-   *** Note: eedi3 is threaded using openmp, and is compiled with visual studio 2012.
-   *** Therefore, it needs the visual studio 2012 redistributable package to be
-   *** installed (for vcomp.dll).
-   *** http://www.microsoft.com/download/details.aspx?id=30679
+   *** Note: eedi3 is threaded using openmp, and is compiled with visual studio 2017.
+   *** Therefore, it needs the visual studio 2017 redistributable package to be
+   *** installed.
+   *** https://www.visualstudio.com/downloads/ look for Microsoft Visual C++ Redistributable for Visual Studio 2017 
 
 
 
@@ -265,12 +266,19 @@ eedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+    v0.9.2.2 - March 23, 2018
+       - Moved to Visual Studio 2017
+       - Removed external asm files (integrated/replaced with intrinsics)
+       - Update Avisynth headers
+       - fix YUY2 x64 artifacts
+       - https://github.com/pinterf/EEDI3 
 
-	v0.9.2.1 - July 29th, 2015
+    v0.9.2.1 - July 29th, 2015
        - Switched to AVS 2.6 API
-	   - Added x64 support
-	   - Updated some variable types for clarity
+       - Added x64 support
+       - Updated some variable types for clarity
        - Compiled with Visual Studio 2013
+       - https://github.com/Elegant996/EEDI3
 
     v0.9.2 - November 11, 2013
        - Added SSE2 optimizations for full-pel interpolation
