@@ -45,24 +45,24 @@ int modnpf(const int m, const int n)
 	return m+n-(m%n);
 }
 
-PlanarFrame::PlanarFrame()
+PlanarFrame::PlanarFrame(int cpuFlags)
 {
 	ypitch = uvpitch = 0;
 	ywidth = uvwidth = 0;
 	yheight = uvheight = 0;
 	y = u = v = NULL;
 	useSIMD = true;
-	cpu = getCPUInfo();
+	cpu = cpuFlags;
 }
 
-PlanarFrame::PlanarFrame(VideoInfo &viInfo)
+PlanarFrame::PlanarFrame(VideoInfo &viInfo, int cpuFlags)
 {
 	ypitch = uvpitch = 0;
 	ywidth = uvwidth = 0;
 	yheight = uvheight = 0;
 	y = u = v = NULL;
 	useSIMD = true;
-	cpu = getCPUInfo();
+  cpu = cpuFlags;
 	allocSpace(viInfo);
 }
 
@@ -175,46 +175,6 @@ bool PlanarFrame::allocSpace(int specs[4])
 		if (v == NULL) return false;
 	}
 	return true;
-}
-
-int PlanarFrame::getCPUInfo()
-{
-	static const int cpu_saved = checkCPU();
-	return cpu_saved;
-}
-
-int PlanarFrame::checkCPU()
-{
-	int cput = 0;
-
-	cput=checkCPU_ASM();
-	if (cput&0x04) checkSSEOSSupport(cput);
-	if (cput&0x08) checkSSE2OSSupport(cput);
-	return cput;
-}
-
-void PlanarFrame::checkSSEOSSupport(int &cput)
-{
-	__try
-	{
-		checkSSEOSSupport_ASM();
-	} 
-	__except (EXCEPTION_EXECUTE_HANDLER) 
-	{
-		if (GetExceptionCode() == 0xC000001Du) cput &= ~0x04;
-	}
-}
-
-void PlanarFrame::checkSSE2OSSupport(int &cput)
-{
-	__try
-	{
-		checkSSE2OSSupport_ASM();
-	} 
-	__except (EXCEPTION_EXECUTE_HANDLER) 
-	{
-		if (GetExceptionCode() == 0xC000001Du) cput &= ~0x08;
-	}
 }
 
 void PlanarFrame::createPlanar(int yheight, int uvheight, int ywidth, int uvwidth)
@@ -468,11 +428,11 @@ PlanarFrame& PlanarFrame::operator=(PlanarFrame &ob2)
 void PlanarFrame::convYUY2to422(const uint8_t *src,uint8_t *py,uint8_t *pu,uint8_t *pv,int pitch1,int pitch2Y,int pitch2UV,
 	int width,int height)
 {
-	if (((cpu&CPU_SSE2)!=0) && useSIMD && (((size_t(src)|pitch1)&15)==0))
+	if (((cpu&CPUF_SSE2)!=0) && useSIMD && (((size_t(src)|pitch1)&15)==0))
 		convYUY2to422_SSE2(src,py,pu,pv,pitch1,pitch2Y,pitch2UV,width,height);
 	else
 	{
-		if (((cpu&CPU_MMX)!=0) && useSIMD) convYUY2to422_MMX(src,py,pu,pv,pitch1,pitch2Y,pitch2UV,width,height);
+		if (((cpu&CPUF_MMX)!=0) && useSIMD) convYUY2to422_MMX(src,py,pu,pv,pitch1,pitch2Y,pitch2UV,width,height);
 		else
 		{
 			width >>= 1;
@@ -502,11 +462,11 @@ void PlanarFrame::convYUY2to422(const uint8_t *src,uint8_t *py,uint8_t *pu,uint8
 void PlanarFrame::conv422toYUY2(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *dst,int pitch1Y,int pitch1UV,int pitch2,
 	int width,int height)
 {
-	if (((cpu&CPU_SSE2)!=0) && useSIMD && ((size_t(dst)&15)==0))
+	if (((cpu&CPUF_SSE2)!=0) && useSIMD && ((size_t(dst)&15)==0))
 		conv422toYUY2_SSE2(py,pu,pv,dst,pitch1Y,pitch1UV,pitch2,width,height);
 	else
 	{
-		if (((cpu&CPU_MMX)!=0) && useSIMD) conv422toYUY2_MMX(py,pu,pv,dst,pitch1Y,pitch1UV,pitch2,width,height);
+		if (((cpu&CPUF_MMX)!=0) && useSIMD) conv422toYUY2_MMX(py,pu,pv,dst,pitch1Y,pitch1UV,pitch2,width,height);
 		else
 		{
 			width >>= 1;

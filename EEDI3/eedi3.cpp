@@ -91,17 +91,20 @@ eedi3::eedi3(PClip _child, int _field, bool _dh, bool _Y, bool _U, bool _V, floa
 	vi.SetFieldBased(false);
 	child->SetCacheHints(CACHE_GET_RANGE, 3);
 	mcpPF = 0;
+
+  const int cpuFlags = env->GetCPUFlags();
+
 	if (mclip)
 	{
 		::VideoInfo	vi2 = vi;
 		vi2.height /= 2;
-		mcpPF = new PlanarFrame(vi2);
+		mcpPF = new PlanarFrame(vi2, cpuFlags);
 	}
-	srcPF = new PlanarFrame();
+	srcPF = new PlanarFrame(cpuFlags);
 	srcPF->createPlanar(vi.height + MARGIN_V * 2, (vi.IsYV12() ? (vi.height >> 1) : vi.height) + MARGIN_V * 2,
 		vi.width + MARGIN_H * 2, (vi.IsRGB24() ? vi.width : (vi.width >> 1)) + MARGIN_H * 2);
-	dstPF = new PlanarFrame(vi);
-	scpPF = new PlanarFrame(vi);
+	dstPF = new PlanarFrame(vi, cpuFlags);
+	scpPF = new PlanarFrame(vi, cpuFlags);
 	if (_threads > 0)
 		omp_set_num_threads(_threads);
 	const int nthreads = omp_get_max_threads();
