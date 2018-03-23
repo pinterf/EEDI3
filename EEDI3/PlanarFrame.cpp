@@ -296,28 +296,22 @@ void PlanarFrame::copyInternalFrom(PVideoFrame &frame, VideoInfo &viInfo)
     BitBlt(v, uvpitch, frame->GetReadPtr(PLANAR_V), frame->GetPitch(PLANAR_V),
       frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
   }
+  else if (viInfo.IsY8())
+  {
+    BitBlt(y, ypitch, frame->GetReadPtr(PLANAR_Y), frame->GetPitch(PLANAR_Y),
+      frame->GetRowSize(PLANAR_Y), frame->GetHeight(PLANAR_Y));
+  }
+  else if (viInfo.IsYUY2())
+  {
+    convYUY2to422(frame->GetReadPtr(), y, u, v, frame->GetPitch(), ypitch, uvpitch,
+      viInfo.width, viInfo.height);
+  }
   else
   {
-    if (viInfo.IsY8())
+    if (viInfo.IsRGB24())
     {
-      BitBlt(y, ypitch, frame->GetReadPtr(PLANAR_Y), frame->GetPitch(PLANAR_Y),
-        frame->GetRowSize(PLANAR_Y), frame->GetHeight(PLANAR_Y));
-    }
-    else
-    {
-      if (viInfo.IsYUY2())
-      {
-        convYUY2to422(frame->GetReadPtr(), y, u, v, frame->GetPitch(), ypitch, uvpitch,
-          viInfo.width, viInfo.height);
-      }
-      else
-      {
-        if (viInfo.IsRGB24())
-        {
-          convRGB24to444(frame->GetReadPtr(), y, u, v, frame->GetPitch(), ypitch, uvpitch,
-            viInfo.width, viInfo.height);
-        }
-      }
+      convRGB24to444(frame->GetReadPtr(), y, u, v, frame->GetPitch(), ypitch, uvpitch,
+        viInfo.width, viInfo.height);
     }
   }
 }
@@ -344,26 +338,17 @@ void PlanarFrame::copyInternalTo(PVideoFrame &frame, VideoInfo &viInfo)
     BitBlt(frame->GetWritePtr(PLANAR_U), frame->GetPitch(PLANAR_U), u, uvpitch, uvwidth, uvheight);
     BitBlt(frame->GetWritePtr(PLANAR_V), frame->GetPitch(PLANAR_V), v, uvpitch, uvwidth, uvheight);
   }
-  else
+  else if (viInfo.IsY8())
   {
-    if (viInfo.IsY8())
-    {
-      BitBlt(frame->GetWritePtr(PLANAR_Y), frame->GetPitch(PLANAR_Y), y, ypitch, ywidth, yheight);
-    }
-    else
-    {
-      if (viInfo.IsYUY2())
-      {
-        conv422toYUY2(y, u, v, frame->GetWritePtr(), ypitch, uvpitch, frame->GetPitch(), ywidth, yheight);
-      }
-      else
-      {
-        if (viInfo.IsRGB24())
-        {
-          conv444toRGB24(y, u, v, frame->GetWritePtr(), ypitch, uvpitch, frame->GetPitch(), ywidth, yheight);
-        }
-      }
-    }
+    BitBlt(frame->GetWritePtr(PLANAR_Y), frame->GetPitch(PLANAR_Y), y, ypitch, ywidth, yheight);
+  }
+  else if (viInfo.IsYUY2())
+  {
+    conv422toYUY2(y, u, v, frame->GetWritePtr(), ypitch, uvpitch, frame->GetPitch(), ywidth, yheight);
+  }
+  else if (viInfo.IsRGB24())
+  {
+    conv444toRGB24(y, u, v, frame->GetWritePtr(), ypitch, uvpitch, frame->GetPitch(), ywidth, yheight);
   }
 }
 

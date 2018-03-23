@@ -101,8 +101,13 @@ eedi3::eedi3(PClip _child, int _field, bool _dh, bool _Y, bool _U, bool _V, floa
     mcpPF = new PlanarFrame(vi2, cpuFlags);
   }
   srcPF = new PlanarFrame(cpuFlags);
-  srcPF->createPlanar(vi.height + MARGIN_V * 2, (vi.IsYV12() ? (vi.height >> 1) : vi.height) + MARGIN_V * 2,
-    vi.width + MARGIN_H * 2, (vi.IsRGB24() ? vi.width : (vi.width >> 1)) + MARGIN_H * 2);
+  if(vi.IsY8())
+    srcPF->createPlanar(vi.height + MARGIN_V * 2, 0,
+      vi.width + MARGIN_H * 2, 0);
+  else
+    srcPF->createPlanar(vi.height + MARGIN_V * 2, (vi.IsYV12() ? (vi.height >> 1) : vi.height) + MARGIN_V * 2,
+      vi.width + MARGIN_H * 2, ((vi.IsYV24() || vi.IsRGB24()) ? vi.width : (vi.width >> 1)) + MARGIN_H * 2);
+
   dstPF = new PlanarFrame(vi, cpuFlags);
   scpPF = new PlanarFrame(vi, cpuFlags);
   if (_threads > 0)
@@ -617,7 +622,8 @@ PVideoFrame __stdcall eedi3::GetFrame(int n, IScriptEnvironment *env)
   }
   if (vcheck > 0 && sclip)
     scpPF->copyFrom(sclip->GetFrame(n, env), vi);
-  for (int b = 0; b < 3; ++b)
+  int planecount = vi.IsY8() ? 1 : 3;
+  for (int b = 0; b < planecount; ++b)
   {
     if ((b == 0 && !Y) ||
       (b == 1 && !U) ||
@@ -864,12 +870,14 @@ void eedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 {
   const int off = 1 - fn;
   PVideoFrame src = child->GetFrame(n, env);
+  int planecount = 3; // rgb24 and YUY2 is converted to 3 planes too
   if (!dh)
   {
-    if (vi.IsYV12())
+    if (vi.IsY8() || vi.IsYV12() || vi.IsYV16() || vi.IsYV24())
     {
       const int plane[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
-      for (int b = 0; b < 3; ++b)
+      planecount = vi.NumComponents(); // override for Y8
+      for (int b = 0; b < planecount; ++b)
         env->BitBlt(srcPF->GetPtr(b) + srcPF->GetPitch(b)*(MARGIN_V + off) + MARGIN_H,
           srcPF->GetPitch(b) * 2,
           src->GetReadPtr(plane[b]) + src->GetPitch(plane[b])*off,
@@ -897,10 +905,11 @@ void eedi3::copyPad(int n, int fn, IScriptEnvironment *env)
   }
   else
   {
-    if (vi.IsYV12())
+    if (vi.IsY8() || vi.IsYV12() || vi.IsYV16() || vi.IsYV24())
     {
       const int plane[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
-      for (int b = 0; b < 3; ++b)
+      planecount = vi.NumComponents(); // override for Y8
+      for (int b = 0; b < planecount; ++b)
         env->BitBlt(srcPF->GetPtr(b) + srcPF->GetPitch(b)*(MARGIN_V + off) + MARGIN_H,
           srcPF->GetPitch(b) * 2, src->GetReadPtr(plane[b]),
           src->GetPitch(plane[b]), src->GetRowSize(plane[b]),
@@ -925,7 +934,7 @@ void eedi3::copyPad(int n, int fn, IScriptEnvironment *env)
         vi.width, vi.height >> 1);
     }
   }
-  for (int b = 0; b < 3; ++b)
+  for (int b = 0; b < planecount; ++b)
   {
     uint8_t *dstp = srcPF->GetPtr(b);
     const int dst_pitch = srcPF->GetPitch(b);
@@ -957,10 +966,11 @@ void	eedi3::copyMask(int n, int fn, IScriptEnvironment *env)
   const int off = (dh) ? 0 : fn;
   const int mul = (dh) ? 1 : 2;
   PVideoFrame src = mclip->GetFrame(n, env);
-  if (vi.IsYV12())
+  if (vi.IsY8() || vi.IsYV12() || vi.IsYV16() || vi.IsYV24())
   {
     const int plane[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
-    for (int b = 0; b < 3; ++b)
+    int planecount = vi.NumComponents(); // override for Y8
+    for (int b = 0; b < planecount; ++b)
       env->BitBlt(
         mcpPF->GetPtr(b),
         mcpPF->GetPitch(b),
@@ -1005,8 +1015,8 @@ AVSValue __cdecl Create_eedi3(AVSValue args, void* user_data, IScriptEnvironment
   if (!args[0].IsClip())
     env->ThrowError("eedi3:  arg 0 must be a clip!");
   VideoInfo vi = args[0].AsClip()->GetVideoInfo();
-  if (!vi.IsYV12() && !vi.IsYUY2() && !vi.IsRGB24())
-    env->ThrowError("eedi3:  only YV12, YUY2, and RGB24 input are supported!");
+  if (!vi.IsY8() && !vi.IsYV12() && !vi.IsYV16() && !vi.IsYV24() && !vi.IsYUY2() && !vi.IsRGB24())
+    env->ThrowError("eedi3:  only Y8, YV12, YV16, YV24, YUY2, and RGB24 input are supported!");
   const bool dh = args[2].AsBool(false);
   if ((vi.height & 1) && !dh)
     env->ThrowError("eedi3:  height must be mod 2 when dh=false (%d)!", vi.height);
@@ -1025,8 +1035,8 @@ AVSValue __cdecl Create_eedi3_rpow2(AVSValue args, void* user_data, IScriptEnvir
   if (!args[0].IsClip())
     env->ThrowError("eedi3_rpow2:  arg 0 must be a clip!");
   VideoInfo vi = args[0].AsClip()->GetVideoInfo();
-  if (!vi.IsYV12() && !vi.IsYUY2() && !vi.IsRGB24())
-    env->ThrowError("eedi3_rpow2:  only YV12, YUY2, and RGB24 input are supported!");
+  if (!vi.IsY8() && !vi.IsYV12() && !vi.IsYV16() && !vi.IsYV24() && !vi.IsYUY2() && !vi.IsRGB24())
+    env->ThrowError("eedi3_rpow2:  only Y8, YV12, YV16, YV24, YUY2, and RGB24 input are supported!");
   if (vi.IsYUY2() && (vi.width & 3))
     env->ThrowError("eedi3_rpow2:  for yuy2 input width must be mod 4 (%d)!", vi.width);
   const int rfactor = args[1].AsInt(-1);
@@ -1093,7 +1103,7 @@ AVSValue __cdecl Create_eedi3_rpow2(AVSValue args, void* user_data, IScriptEnvir
       }
       hshift = vshift = -0.5;
     }
-    else if (vi.IsYV12())
+    else if (vi.IsPlanar()) // Y8, Y12, Y16, Y24
     {
       for (int i = 0; i < ct; ++i)
       {
