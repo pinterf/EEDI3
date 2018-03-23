@@ -1,6 +1,6 @@
                                                                                                     |
                                    nnedi3 for Avisynth v2.6.x                                       |
-                                    v0.9.2.2 (March 23, 2018)                                       |
+                                    v0.9.2.3 (March 23, 2018)                                       |
                                           by tritical                                               |
                                      modified by Firesledge                                         |
                                        modified by Elegant                                          |
@@ -266,6 +266,9 @@ eedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+    v0.9.2.3 - March 23, 2018
+       - Y8, Y16 and Y24 colorspaces as input: go live.
+
     v0.9.2.2 - March 23, 2018
        - Moved to Visual Studio 2017
        - Removed external asm files (integrated/replaced with intrinsics)

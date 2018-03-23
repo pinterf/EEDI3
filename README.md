@@ -15,6 +15,8 @@ The syntax and parameters are identical to the original EEDI3. To see a list ref
 * Switched to AVS 2.6 API
 * Added x64 support
 * Updated some variable types for clarity
+* Y8, Y16 and Y24 colorspaces enabled
+
 
 ### Programmer Notes
 
