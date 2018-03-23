@@ -23,11 +23,9 @@
 
 #include "PlanarFrame.h"
 #include <stdint.h>
+#include <emmintrin.h>
 
-
-extern "C" int checkCPU_ASM(void);
-extern "C" void checkSSEOSSupport_ASM(void);
-extern "C" void checkSSE2OSSupport_ASM(void);
+/*
 extern "C" void convYUY2to422_MMX(const uint8_t *src, uint8_t *py, uint8_t *pu, uint8_t *pv, int pitch1, int pitch2Y, int pitch2UV,
   int width, int height);
 extern "C" void convYUY2to422_SSE2(const uint8_t *src, uint8_t *py, uint8_t *pu, uint8_t *pv, int pitch1, int pitch2Y, int pitch2UV,
@@ -36,7 +34,7 @@ extern "C" void conv422toYUY2_MMX(uint8_t *py, uint8_t *pu, uint8_t *pv, uint8_t
   int width, int height);
 extern "C" void conv422toYUY2_SSE2(uint8_t *py, uint8_t *pu, uint8_t *pv, uint8_t *dst, int pitch1Y, int pitch1UV, int pitch2,
   int width, int height);
-
+*/
 
 int modnpf(const int m, const int n)
 {
@@ -425,15 +423,154 @@ PlanarFrame& PlanarFrame::operator=(PlanarFrame &ob2)
   return *this;
 }
 
+#ifndef _M_X64
+
+__declspec(align(16)) const __int64 Ymask[2] = { 0x00FF00FF00FF00FF, 0x00FF00FF00FF00FF };
+
+void convYUY2to422_MMX(const unsigned char *src, unsigned char *py, unsigned char *pu,
+  unsigned char *pv, int pitch1, int pitch2Y, int pitch2UV, int width, int height)
+{
+  __asm
+  {
+    mov edi, src
+    mov ebx, py
+    mov edx, pu
+    mov esi, pv
+    mov ecx, width
+    shr ecx, 1
+    movq mm5, Ymask
+    yloop :
+    xor eax, eax
+      align 16
+      xloop :
+      movq mm0, [edi + eax * 4]; VYUYVYUY
+      movq mm1, [edi + eax * 4 + 8]; VYUYVYUY
+      movq mm2, mm0; VYUYVYUY
+      movq mm3, mm1; VYUYVYUY
+      pand mm0, mm5; 0Y0Y0Y0Y
+      psrlw mm2, 8; 0V0U0V0U
+      pand mm1, mm5; 0Y0Y0Y0Y
+      psrlw mm3, 8; 0V0U0V0U
+      packuswb mm0, mm1; YYYYYYYY
+      packuswb mm2, mm3; VUVUVUVU
+      movq mm4, mm2; VUVUVUVU
+      pand mm2, mm5; 0U0U0U0U
+      psrlw mm4, 8; 0V0V0V0V
+      packuswb mm2, mm2; xxxxUUUU
+      packuswb mm4, mm4; xxxxVVVV
+      movq[ebx + eax * 2], mm0; store y
+      movd[edx + eax], mm2; store u
+      movd[esi + eax], mm4; store v
+      add eax, 4
+      cmp eax, ecx
+      jl xloop
+      add edi, pitch1
+      add ebx, pitch2Y
+      add edx, pitch2UV
+      add esi, pitch2UV
+      dec height
+      jnz yloop
+      emms
+  }
+}
+
+static void conv422toYUY2_MMX(unsigned char *py, unsigned char *pu, unsigned char *pv,
+  unsigned char *dst, int pitch1Y, int pitch1UV, int pitch2, int width, int height)
+{
+  __asm
+  {
+    mov ebx, py
+    mov edx, pu
+    mov esi, pv
+    mov edi, dst
+    mov ecx, width
+    shr ecx, 1
+    yloop:
+    xor eax, eax
+      align 16
+      xloop :
+      movq mm0, [ebx + eax * 2]; YYYYYYYY
+      movd mm1, [edx + eax]; 0000UUUU
+      movd mm2, [esi + eax]; 0000VVVV
+      movq mm3, mm0; YYYYYYYY
+      punpcklbw mm1, mm2; VUVUVUVU
+      punpcklbw mm0, mm1; VYUYVYUY
+      punpckhbw mm3, mm1; VYUYVYUY
+      movq[edi + eax * 4], mm0; store
+      movq[edi + eax * 4 + 8], mm3; store
+      add eax, 4
+      cmp eax, ecx
+      jl xloop
+      add ebx, pitch1Y
+      add edx, pitch1UV
+      add esi, pitch1UV
+      add edi, pitch2
+      dec height
+      jnz yloop
+      emms
+  }
+}
+#endif
+
+static void convYUY2to422_SSE2_simd(const unsigned char *src, unsigned char *py, unsigned char *pu,
+  unsigned char *pv, int pitch1, int pitch2Y, int pitch2UV, int width, int height)
+{
+  width >>= 1; // mov ecx, width
+  __m128i Ymask = _mm_set1_epi16(0x00FF);
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x += 4) {
+      __m128i fullsrc = _mm_load_si128(reinterpret_cast<const __m128i *>(src + x * 4)); // VYUYVYUYVYUYVYUY
+      __m128i yy = _mm_and_si128(fullsrc, Ymask); // 0Y0Y0Y0Y0Y0Y0Y0Y
+      __m128i uvuv = _mm_srli_epi16(fullsrc, 8); // 0V0U0V0U0V0U0V0U
+      yy = _mm_packus_epi16(yy, yy); // xxxxxxxxYYYYYYYY
+      uvuv = _mm_packus_epi16(uvuv, uvuv); // xxxxxxxxVUVUVUVU
+      __m128i uu = _mm_and_si128(uvuv, Ymask); // xxxxxxxx0U0U0U0U
+      __m128i vv = _mm_srli_epi16(uvuv, 8); // xxxxxxxx0V0V0V0V
+      uu = _mm_packus_epi16(uu, uu); // xxxxxxxxxxxxUUUU
+      vv = _mm_packus_epi16(vv, vv); // xxxxxxxxxxxxVVVV
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(py + x * 2), yy); // store y
+      *(uint32_t *)(pu + x) = _mm_cvtsi128_si32(uu); // store u
+      *(uint32_t *)(pv + x) = _mm_cvtsi128_si32(vv); // store v
+    }
+    src += pitch1;
+    py += pitch2Y;
+    pu += pitch2UV;
+    pv += pitch2UV;
+  }
+}
+
+static void conv422toYUY2_SSE2(unsigned char *py, unsigned char *pu, unsigned char *pv,
+  unsigned char *dst, int pitch1Y, int pitch1UV, int pitch2, int width, int height)
+{
+  width >>= 1; // mov ecx, width
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x += 4) {
+      __m128i yy = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(py + x * 2)); // YYYYYYYY
+      __m128i uu = _mm_castps_si128(_mm_load_ss(reinterpret_cast<float *>(pu + x))); // 000000000000UUUU
+      __m128i vv = _mm_castps_si128(_mm_load_ss(reinterpret_cast<float *>(pv + x))); // 000000000000VVVV
+      __m128i uvuv = _mm_unpackhi_epi8(uu, vv); // 00000000VUVUVUVU
+      __m128i yuyv = _mm_unpackhi_epi8(yy, uvuv); // VYUYVYUYVYUYVYUY
+      _mm_store_si128(reinterpret_cast<__m128i *>(dst + x * 4), yuyv);
+    }
+    dst += pitch2;
+    py += pitch1Y;
+    pu += pitch1UV;
+    pv += pitch1UV;
+  }
+}
+
 void PlanarFrame::convYUY2to422(const uint8_t *src, uint8_t *py, uint8_t *pu, uint8_t *pv, int pitch1, int pitch2Y, int pitch2UV,
   int width, int height)
 {
   if (((cpu&CPUF_SSE2) != 0) && useSIMD && (((size_t(src) | pitch1) & 15) == 0))
-    convYUY2to422_SSE2(src, py, pu, pv, pitch1, pitch2Y, pitch2UV, width, height);
+    convYUY2to422_SSE2_simd(src, py, pu, pv, pitch1, pitch2Y, pitch2UV, width, height);
   else
   {
-    if (((cpu&CPUF_MMX) != 0) && useSIMD) convYUY2to422_MMX(src, py, pu, pv, pitch1, pitch2Y, pitch2UV, width, height);
+#ifndef _M_X64
+    if (((cpu&CPUF_MMX) != 0) && useSIMD)
+      convYUY2to422_MMX(src, py, pu, pv, pitch1, pitch2Y, pitch2UV, width, height);
     else
+#endif
     {
       width >>= 1;
       for (int y = 0; y < height; ++y)
@@ -466,8 +603,11 @@ void PlanarFrame::conv422toYUY2(uint8_t *py, uint8_t *pu, uint8_t *pv, uint8_t *
     conv422toYUY2_SSE2(py, pu, pv, dst, pitch1Y, pitch1UV, pitch2, width, height);
   else
   {
-    if (((cpu&CPUF_MMX) != 0) && useSIMD) conv422toYUY2_MMX(py, pu, pv, dst, pitch1Y, pitch1UV, pitch2, width, height);
+#ifndef _M_X64
+    if (((cpu&CPUF_MMX) != 0) && useSIMD) 
+      conv422toYUY2_MMX(py, pu, pv, dst, pitch1Y, pitch1UV, pitch2, width, height);
     else
+#endif
     {
       width >>= 1;
       for (int y = 0; y < height; ++y)
